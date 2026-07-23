@@ -300,7 +300,7 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### ✨ Tính năng nâng cao")
-    expert_mode = st.toggle("🔍 Phân tích Vĩ mô (Kinh tế Tư bản chủ nghĩa)")
+    expert_mode = st.toggle("🔍 Phân tích chuyên sâu ")
 
     if st.button("Xóa lịch sử trò chuyện", use_container_width=True):
         st.session_state.messages = []
@@ -425,8 +425,8 @@ if question:
                     # Bổ sung yêu cầu phân tích vĩ mô khi bật chế độ chuyên gia.
                     if expert_mode:
                         st.info(
-                            "▶️ [Video 3s - Tone giọng nữ AI]: "
-                            "'Vậy thì theo tôi...'"
+                        
+                            "'Đang phân tích'"
                         )
                         question = (
                             question
