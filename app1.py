@@ -426,7 +426,7 @@ if question:
                     if expert_mode:
                         st.info(
                         
-                            "'Đang phân tích'"
+                            "Đang tra cứu hồ sơ pháp lý và tổng hợp phân tích chuyên sâu..."
                         )
                         question = (
                             question
