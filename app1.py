@@ -8,6 +8,7 @@
 
 import hashlib
 import os
+import re
 from io import BytesIO
 from typing import Dict, List, Tuple
 
@@ -61,39 +62,97 @@ def split_text(
     overlap: int = 200,
 ) -> List[Dict]:
     """
-    Chia văn bản thành các đoạn nhỏ có chồng lấn.
+    Chia văn bản theo ranh giới câu và từ.
 
-    chunk_size:
-        Số ký tự tối đa trong mỗi đoạn.
-
-    overlap:
-        Số ký tự được lặp lại giữa hai đoạn liên tiếp,
-        giúp tránh mất ngữ cảnh tại ranh giới đoạn.
+    Cách này tránh cắt giữa một từ hoặc giữa một câu, nên phần tài liệu
+    được truy xuất không còn bắt đầu bằng một mẩu chữ bị cụt.
     """
-    chunks = []
-
     if not text:
-        return chunks
+        return []
 
-    start = 0
-    text_length = len(text)
+    # Tách theo dấu kết thúc câu. Giữ nguyên dấu câu trong từng đoạn.
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?;])\s+", text.strip())
+        if sentence.strip()
+    ]
 
-    while start < text_length:
-        end = min(start + chunk_size, text_length)
-        chunk = text[start:end].strip()
+    # Nếu một câu quá dài, tiếp tục tách theo từ thay vì cắt giữa ký tự.
+    units = []
+    for sentence in sentences:
+        if len(sentence) <= chunk_size:
+            units.append(sentence)
+            continue
 
-        if chunk:
+        words = sentence.split()
+        current_part = []
+
+        for word in words:
+            candidate = " ".join(current_part + [word])
+
+            if current_part and len(candidate) > chunk_size:
+                units.append(" ".join(current_part))
+                current_part = [word]
+            else:
+                current_part.append(word)
+
+        if current_part:
+            units.append(" ".join(current_part))
+
+    chunks = []
+    current_units = []
+    current_length = 0
+
+    for unit in units:
+        separator_length = 1 if current_units else 0
+
+        if (
+            current_units
+            and current_length + separator_length + len(unit) > chunk_size
+        ):
+            chunk_text = " ".join(current_units).strip()
+
             chunks.append(
                 {
-                    "text": chunk,
+                    "text": chunk_text,
                     "page": page_number,
                 }
             )
 
-        if end >= text_length:
-            break
+            # Chồng lấn bằng các câu hoàn chỉnh ở cuối đoạn trước.
+            overlap_units = []
+            overlap_length = 0
 
-        start = max(end - overlap, start + 1)
+            for previous_unit in reversed(current_units):
+                added_length = len(previous_unit) + (
+                    1 if overlap_units else 0
+                )
+
+                if overlap_units and overlap_length + added_length > overlap:
+                    break
+
+                overlap_units.insert(0, previous_unit)
+                overlap_length += added_length
+
+                if overlap_length >= overlap:
+                    break
+
+            current_units = overlap_units
+            current_length = len(" ".join(current_units))
+
+        if current_units:
+            current_length += 1
+
+        current_units.append(unit)
+        current_length += len(unit)
+
+    if current_units:
+        chunks.append(
+            {
+                "text": " ".join(current_units).strip(),
+                "page": page_number,
+            }
+        )
 
     return chunks
 
@@ -319,7 +378,8 @@ with st.sidebar:
 # -----------------------------
 if uploaded_file is not None:
     file_bytes = uploaded_file.getvalue()
-    current_hash = hashlib.sha256(file_bytes).hexdigest()
+    index_version = b"sentence_chunk_v2"
+    current_hash = hashlib.sha256(file_bytes + index_version).hexdigest()
 
     # Chỉ tạo lại chỉ mục khi người dùng tải một file mới.
     if current_hash != st.session_state.document_hash:
@@ -461,9 +521,9 @@ if question:
                                 f"độ tương đồng "
                                 f"{source_item['score']:.3f}**"
                             )
-                          formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
-                          st.markdown(formatted_text)
-                          st.divider()
+                            formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
+                            st.markdown(formatted_text)
+                            st.divider()
 
                     st.session_state.messages.append(
                         {
