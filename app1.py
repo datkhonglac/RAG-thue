@@ -288,7 +288,7 @@ with st.sidebar:
     )
     
    # Tự động lấy Key từ két sắt và gán cố định tên mô hình
-    api_key = st.secrets["GROQ_API_KEY"]
+    api_key = st.secrets.get("GROQ_API_KEY", "")
     model_name = "llama-3.3-70b-versatile"
 
     top_k = st.slider(
@@ -297,6 +297,10 @@ with st.sidebar:
         max_value=10,
         value=5,
     )
+
+    st.divider()
+    st.markdown("### ✨ Tính năng nâng cao")
+    expert_mode = st.toggle("🔍 Phân tích Vĩ mô (Kinh tế Tư bản chủ nghĩa)")
 
     if st.button("Xóa lịch sử trò chuyện", use_container_width=True):
         st.session_state.messages = []
@@ -405,19 +409,33 @@ if question:
             "Hãy nhập API Key trong thanh bên rồi gửi lại câu hỏi."
         )
 
-             with st.chat_message("assistant", avatar="👩‍🏫"):
-                    st.error(error_message)
-        
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": error_message,
-                    }
-                )
+        with st.chat_message("assistant", avatar="👩‍🏫"):
+            st.error(error_message)
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": error_message,
+            }
+        )
     else:
-          with st.chat_message("assistant", avatar="👩‍🏫"):
+        with st.chat_message("assistant", avatar="👩‍🏫"):
             with st.spinner("Đang tìm kiếm trong tài liệu và tạo câu trả lời..."):
                 try:
+                    # Bổ sung yêu cầu phân tích vĩ mô khi bật chế độ chuyên gia.
+                    if expert_mode:
+                        st.info(
+                            "▶️ [Video 3s - Tone giọng nữ AI]: "
+                            "'Vậy thì theo tôi...'"
+                        )
+                        question = (
+                            question
+                            + "\n\n(YÊU CẦU ẨN: Hãy phân tích thêm tác động "
+                            "của chính sách thuế này dưới góc độ kinh tế vĩ mô "
+                            "và sự vận hành của nền sản xuất trong nền kinh tế "
+                            "tư bản chủ nghĩa. Trả lời sắc bén và sâu sắc)."
+                        )
+
                     retrieved_chunks = search_relevant_chunks(
                         question=question,
                         chunks=st.session_state.chunks,
@@ -434,13 +452,16 @@ if question:
 
                     st.markdown(answer)
 
-                    with st.expander("Xem các đoạn tài liệu được truy xuất"):
-                        for source in retrieved_chunks:
+                    with st.expander(
+                        "Xem các đoạn tài liệu được truy xuất"
+                    ):
+                        for source_item in retrieved_chunks:
                             st.markdown(
-                                f"**Trang {source['page']} — "
-                                f"độ tương đồng {source['score']:.3f}**"
+                                f"**Trang {source_item['page']} — "
+                                f"độ tương đồng "
+                                f"{source_item['score']:.3f}**"
                             )
-                            st.write(source["text"])
+                            st.write(source_item["text"])
                             st.divider()
 
                     st.session_state.messages.append(
