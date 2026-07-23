@@ -461,7 +461,7 @@ if question:
                                 f"độ tương đồng "
                                 f"{source_item['score']:.3f}**"
                             )
-                            formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
+                            formatted_text = source_item["text"].replace("•", "\n\n* ")
                             st.markdown(formatted_text)
                             st.divider()
 
