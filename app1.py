@@ -217,7 +217,7 @@ def ask_openai(
     """
     Gửi câu hỏi và ngữ cảnh cho mô hình OpenAI.
     """
-    client = OpenAI(api_key=api_key)
+   client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
     context = build_context(retrieved_chunks)
 
     system_prompt = """
