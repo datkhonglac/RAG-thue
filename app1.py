@@ -405,15 +405,15 @@ if question:
             "Hãy nhập API Key trong thanh bên rồi gửi lại câu hỏi."
         )
 
-     with st.chat_message("assistant", avatar="👩‍🏫"):
-            st.error(error_message)
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": error_message,
-            }
-        )
+         with st.chat_message("assistant", avatar="👩‍🏫"):
+                st.error(error_message)
+    
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": error_message,
+                }
+            )
     else:
         with st.chat_message("assistant"):
             with st.spinner("Đang tìm kiếm trong tài liệu và tạo câu trả lời..."):
