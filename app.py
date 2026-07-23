@@ -434,7 +434,7 @@ if question:
                             top_k=top_k,
                         )
     
-                            answer = ask_openai(
+                        answer = ask_openai(
                             api_key=api_key,
                             model_name=model_name,
                             question=question,
