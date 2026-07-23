@@ -286,19 +286,10 @@ with st.sidebar:
         type=["pdf"],
         accept_multiple_files=False,
     )
-
-    api_key = st.text_input(
-        "OpenAI API Key",
-        value=os.getenv("OPENAI_API_KEY", ""),
-        type="password",
-        help="API Key chỉ được sử dụng trong phiên chạy hiện tại.",
-    )
-
-    model_name = st.text_input(
-        "Tên mô hình OpenAI",
-        value=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        help="Có thể thay đổi nếu tài khoản của bạn sử dụng tên mô hình khác.",
-    )
+    
+   # Tự động lấy Key từ két sắt và gán cố định tên mô hình
+api_key = st.secrets["GROQ_API_KEY"]
+model_name = "llama-3.3-70b-versatile"
 
     top_k = st.slider(
         "Số đoạn tài liệu dùng làm ngữ cảnh",
