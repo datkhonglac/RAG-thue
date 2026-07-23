@@ -288,7 +288,7 @@ with st.sidebar:
     )
     
    # Tự động lấy Key từ két sắt và gán cố định tên mô hình
-    api_key = st.secrets["GROQ_API_KEY"]
+    api_key = st.secrets.get("GROQ_API_KEY", "")
     model_name = "llama-3.3-70b-versatile"
 
     top_k = st.slider(
@@ -300,7 +300,7 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### ✨ Tính năng nâng cao")
-    expert_mode = st.toggle("🔍 Phân tích Vĩ mô (Kinh tế Tư bản chủ nghĩa)")
+    expert_mode = st.toggle("🔍 Phân tích chuyên sâu ")
 
     if st.button("Xóa lịch sử trò chuyện", use_container_width=True):
         st.session_state.messages = []
@@ -421,35 +421,48 @@ if question:
     else:
         with st.chat_message("assistant", avatar="👩‍🏫"):
             with st.spinner("Đang tìm kiếm trong tài liệu và tạo câu trả lời..."):
-                    # --- ĐOẠN CODE MỚI THÊM VÀO ĐÂY ---
-                if expert_mode:
-                    st.info("▶️ [Video 3s - Tone giọng nữ AI]: 'Vậy thì theo tôi...'")
-                    question = question + "\n\n(YÊU CẦU ẨN: Hãy phân tích thêm tác động của chính sách thuế này dưới góc độ kinh tế vĩ mô và sự vận hành của nền sản xuất trong nền kinh tế tư bản chủ nghĩa. Trả lời sắc bén và sâu sắc)."
-                # ----------------------------------
-                    try:
-                        retrieved_chunks = search_relevant_chunks(
-                            question=question,
-                            chunks=st.session_state.chunks,
-                            embeddings=st.session_state.embeddings,
-                            top_k=top_k,
+                try:
+                    # Bổ sung yêu cầu phân tích vĩ mô khi bật chế độ chuyên gia.
+                    if expert_mode:
+                        st.info(
+                        
+                            "Đang tra cứu hồ sơ pháp lý và tổng hợp phân tích chuyên sâu..."
                         )
-    
-                        answer = ask_openai(
-                            api_key=api_key,
-                            model_name=model_name,
-                            question=question,
-                            retrieved_chunks=retrieved_chunks,
+                        question = (
+                            question
+                            + "\n\n(YÊU CẦU ẨN: Hãy phân tích thêm tác động "
+                            "của chính sách thuế này dưới góc độ kinh tế vĩ mô "
+                            "và sự vận hành của nền sản xuất trong nền kinh tế "
+                            "tư bản chủ nghĩa. Trả lời sắc bén và sâu sắc)."
                         )
+
+                    retrieved_chunks = search_relevant_chunks(
+                        question=question,
+                        chunks=st.session_state.chunks,
+                        embeddings=st.session_state.embeddings,
+                        top_k=top_k,
+                    )
+
+                    answer = ask_openai(
+                        api_key=api_key,
+                        model_name=model_name,
+                        question=question,
+                        retrieved_chunks=retrieved_chunks,
+                    )
 
                     st.markdown(answer)
 
-                    with st.expander("Xem các đoạn tài liệu được truy xuất"):
-                        for source in retrieved_chunks:
+                    with st.expander(
+                        "Xem các đoạn tài liệu được truy xuất"
+                    ):
+                        for source_item in retrieved_chunks:
                             st.markdown(
-                                f"**Trang {source['page']} — "
-                                f"độ tương đồng {source['score']:.3f}**"
+                                f"**Trang {source_item['page']} — "
+                                f"độ tương đồng "
+                                f"{source_item['score']:.3f}**"
                             )
-                            st.write(source["text"])
+                            formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
+                            st.markdown(formatted_text)
                             st.divider()
 
                     st.session_state.messages.append(
