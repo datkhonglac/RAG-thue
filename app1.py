@@ -228,8 +228,7 @@ Yêu cầu:
 2. Không tự suy đoán điều khoản, mức thuế, thời hạn hoặc thủ tục nếu tài liệu không nêu rõ.
 3. Nếu ngữ cảnh không đủ để trả lời, hãy nói rõ rằng tài liệu chưa cung cấp đủ thông tin.
 4. Trả lời bằng tiếng Việt, rõ ràng, có cấu trúc.
-5. Khi sử dụng thông tin từ tài liệu, ghi nguồn theo dạng [Trang X].
-6. Không khẳng định đây là tư vấn pháp lý chính thức.
+5. Không khẳng định đây là tư vấn pháp lý chính thức.
 """.strip()
 
     user_prompt = f"""
