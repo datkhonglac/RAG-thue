@@ -415,7 +415,7 @@ if question:
                 }
             )
     else:
-         with st.chat_message("assistant", avatar="👩‍🏫"):
+          with st.chat_message("assistant", avatar="👩‍🏫"):
             with st.spinner("Đang tìm kiếm trong tài liệu và tạo câu trả lời..."):
                 try:
                     retrieved_chunks = search_relevant_chunks(
