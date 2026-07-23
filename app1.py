@@ -348,12 +348,23 @@ else:
 # -----------------------------
 # HIỂN THỊ LỊCH SỬ CHAT
 # -----------------------------
+# 1. Thêm lời chào mặc định nếu chưa có tin nhắn nào
+if not st.session_state.messages:
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": "👋 Chào bạn! Tôi là trợ lý AI chuyên tra cứu và phân tích tài liệu Thuế. Hãy tải tài liệu của bạn lên thanh bên trái và đặt câu hỏi cho tôi nhé!"
+    })
+
+# 2. Hiển thị tin nhắn với Avatar tùy chỉnh
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    # Đặt icon người dùng và icon cô giáo cho AI
+    avatar_icon = "🧑‍💻" if message["role"] == "user" else "👩‍🏫"
+    
+    with st.chat_message(message["role"], avatar=avatar_icon):
         st.markdown(message["content"])
 
         if message.get("sources"):
-            with st.expander("Xem các đoạn tài liệu được truy xuất"):
+            with st.expander("🔍 Xem các đoạn tài liệu được truy xuất"):
                 for source in message["sources"]:
                     st.markdown(
                         f"**Trang {source['page']} — "
@@ -385,7 +396,7 @@ if question:
         }
     )
 
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(question)
 
     if not api_key:
@@ -394,7 +405,7 @@ if question:
             "Hãy nhập API Key trong thanh bên rồi gửi lại câu hỏi."
         )
 
-        with st.chat_message("assistant"):
+       with st.chat_message("assistant", avatar="👩‍🏫"):
             st.error(error_message)
 
         st.session_state.messages.append(
