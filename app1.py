@@ -44,73 +44,140 @@ st.caption(
 # -----------------------------
 def clean_text(text: str) -> str:
     """
-    Làm sạch văn bản PDF:
-    - Bỏ khoảng trắng dư thừa.
-    - Ghép các dòng thành một chuỗi dễ chia đoạn hơn.
+    Làm sạch văn bản PDF nhưng vẫn giữ cấu trúc dòng.
+
+    Khác với phiên bản cũ, hàm này không ghép toàn bộ trang thành một dòng.
+    Nhờ đó các Điều, Khoản, Điểm và gạch đầu dòng vẫn được xuống dòng.
     """
     if not text:
         return ""
 
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    return " ".join(lines)
+    text = (
+        text.replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\u00a0", " ")
+        .replace("\u200b", "")
+        .replace("\u00ad", "")
+    )
+
+    raw_lines = text.split("\n")
+    cleaned_lines = []
+
+    for raw_line in raw_lines:
+        # Chỉ gom khoảng trắng bên trong từng dòng, không xóa dấu xuống dòng.
+        line = re.sub(r"[ \t]+", " ", raw_line).strip()
+
+        if not line:
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+
+        # Nối từ bị ngắt bằng dấu gạch nối ở cuối dòng PDF.
+        if (
+            cleaned_lines
+            and cleaned_lines[-1]
+            and cleaned_lines[-1].endswith("-")
+            and line[:1].islower()
+        ):
+            cleaned_lines[-1] = cleaned_lines[-1][:-1] + line
+            continue
+
+        cleaned_lines.append(line)
+
+    # Xóa các dòng trống thừa ở đầu và cuối.
+    while cleaned_lines and cleaned_lines[0] == "":
+        cleaned_lines.pop(0)
+
+    while cleaned_lines and cleaned_lines[-1] == "":
+        cleaned_lines.pop()
+
+    return "\n".join(cleaned_lines)
+
+
+def _split_long_block(block: str, chunk_size: int) -> List[str]:
+    """Tách một khối quá dài theo câu; chỉ tách theo từ khi thật sự cần."""
+    sentences = [
+        item.strip()
+        for item in re.split(r"(?<=[.!?;:])\s+", block)
+        if item.strip()
+    ]
+
+    if not sentences:
+        sentences = [block.strip()]
+
+    parts = []
+    current = ""
+
+    for sentence in sentences:
+        candidate = f"{current} {sentence}".strip()
+
+        if current and len(candidate) > chunk_size:
+            parts.append(current)
+            current = sentence
+        else:
+            current = candidate
+
+        # Trường hợp một câu duy nhất dài hơn chunk_size.
+        while len(current) > chunk_size:
+            cut = current.rfind(" ", 0, chunk_size + 1)
+
+            if cut <= 0:
+                cut = chunk_size
+
+            parts.append(current[:cut].strip())
+            current = current[cut:].strip()
+
+    if current:
+        parts.append(current)
+
+    return parts
 
 
 def split_text(
     text: str,
     page_number: int,
-    chunk_size: int = 1200,
-    overlap: int = 200,
+    chunk_size: int = 1400,
+    overlap: int = 250,
 ) -> List[Dict]:
     """
-    Chia văn bản theo ranh giới câu và từ.
+    Chia theo đoạn văn và các dòng pháp lý thay vì cắt theo ký tự.
 
-    Cách này tránh cắt giữa một từ hoặc giữa một câu, nên phần tài liệu
-    được truy xuất không còn bắt đầu bằng một mẩu chữ bị cụt.
+    Mỗi đoạn giữ nguyên dấu xuống dòng. Khi phải tạo chunk mới, hàm giữ lại
+    một phần cuối của chunk trước để đoạn truy xuất không bị cụt ngữ cảnh.
     """
     if not text:
         return []
 
-    # Tách theo dấu kết thúc câu. Giữ nguyên dấu câu trong từng đoạn.
-    sentences = [
-        sentence.strip()
-        for sentence in re.split(r"(?<=[.!?;])\s+", text.strip())
-        if sentence.strip()
+    # Mỗi dòng có nội dung được xem là một đơn vị cấu trúc.
+    # Dòng trống tạo ranh giới đoạn rõ ràng.
+    raw_blocks = [
+        block.strip()
+        for block in re.split(r"\n\s*\n|\n(?=(?:[•▪◦●■◆]|[-–—]\s|"
+                              r"\d+[.)]\s|[a-zđ][.)]\s|"
+                              r"(?:Điều|Khoản|Điểm|Mục|Chương)\s+\w+))",
+                              text,
+                              flags=re.IGNORECASE)
+        if block.strip()
     ]
 
-    # Nếu một câu quá dài, tiếp tục tách theo từ thay vì cắt giữa ký tự.
-    units = []
-    for sentence in sentences:
-        if len(sentence) <= chunk_size:
-            units.append(sentence)
-            continue
+    blocks = []
 
-        words = sentence.split()
-        current_part = []
-
-        for word in words:
-            candidate = " ".join(current_part + [word])
-
-            if current_part and len(candidate) > chunk_size:
-                units.append(" ".join(current_part))
-                current_part = [word]
-            else:
-                current_part.append(word)
-
-        if current_part:
-            units.append(" ".join(current_part))
+    for block in raw_blocks:
+        if len(block) <= chunk_size:
+            blocks.append(block)
+        else:
+            blocks.extend(_split_long_block(block, chunk_size))
 
     chunks = []
-    current_units = []
+    current_blocks = []
     current_length = 0
 
-    for unit in units:
-        separator_length = 1 if current_units else 0
+    for block in blocks:
+        separator_length = 2 if current_blocks else 0
+        candidate_length = current_length + separator_length + len(block)
 
-        if (
-            current_units
-            and current_length + separator_length + len(unit) > chunk_size
-        ):
-            chunk_text = " ".join(current_units).strip()
+        if current_blocks and candidate_length > chunk_size:
+            chunk_text = "\n\n".join(current_blocks).strip()
 
             chunks.append(
                 {
@@ -119,42 +186,93 @@ def split_text(
                 }
             )
 
-            # Chồng lấn bằng các câu hoàn chỉnh ở cuối đoạn trước.
-            overlap_units = []
+            # Giữ lại các khối hoàn chỉnh ở cuối chunk trước làm overlap.
+            overlap_blocks = []
             overlap_length = 0
 
-            for previous_unit in reversed(current_units):
-                added_length = len(previous_unit) + (
-                    1 if overlap_units else 0
+            for previous_block in reversed(current_blocks):
+                added_length = len(previous_block) + (
+                    2 if overlap_blocks else 0
                 )
 
-                if overlap_units and overlap_length + added_length > overlap:
+                if overlap_blocks and overlap_length + added_length > overlap:
                     break
 
-                overlap_units.insert(0, previous_unit)
+                overlap_blocks.insert(0, previous_block)
                 overlap_length += added_length
 
                 if overlap_length >= overlap:
                     break
 
-            current_units = overlap_units
-            current_length = len(" ".join(current_units))
+            current_blocks = overlap_blocks
+            current_length = len("\n\n".join(current_blocks))
 
-        if current_units:
-            current_length += 1
+        if current_blocks:
+            current_length += 2
 
-        current_units.append(unit)
-        current_length += len(unit)
+        current_blocks.append(block)
+        current_length += len(block)
 
-    if current_units:
+    if current_blocks:
         chunks.append(
             {
-                "text": " ".join(current_units).strip(),
+                "text": "\n\n".join(current_blocks).strip(),
                 "page": page_number,
             }
         )
 
     return chunks
+
+
+def format_source_text(text: str) -> str:
+    """
+    Chuẩn hóa phần nguồn để Streamlit xuống dòng rõ ràng.
+
+    Hàm bổ sung xuống dòng trước gạch đầu dòng, số thứ tự và các cấu trúc
+    Điều/Khoản/Điểm trong trường hợp PDF đã trích xuất chúng trên cùng một dòng.
+    """
+    if not text:
+        return ""
+
+    value = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Tách các ý bị PDF dồn lên cùng một dòng.
+    value = re.sub(
+        r"\s+(?=(?:[•▪◦●■◆]|[-–—])\s+)",
+        "\n",
+        value,
+    )
+    value = re.sub(
+        r"\s+(?=(?:\d+[.)]|[a-zđ][.)])\s+)",
+        "\n",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"\s+(?=(?:Điều|Khoản|Điểm|Mục|Chương)\s+\w+)",
+        "\n",
+        value,
+        flags=re.IGNORECASE,
+    )
+
+    output_lines = []
+
+    for raw_line in value.splitlines():
+        line = re.sub(r"[ \t]+", " ", raw_line).strip()
+
+        if not line:
+            if output_lines and output_lines[-1] != "":
+                output_lines.append("")
+            continue
+
+        # Đổi ký hiệu bullet của PDF thành cú pháp Markdown.
+        line = re.sub(r"^[•▪◦●■◆]\s*", "- ", line)
+        line = re.sub(r"^[-–—]\s+", "- ", line)
+
+        output_lines.append(line)
+
+    # Dùng hai khoảng trắng trước dấu xuống dòng để Markdown hiển thị line break.
+    return "  \n".join(output_lines)
 
 
 @st.cache_data(show_spinner=False)
@@ -168,6 +286,10 @@ def read_pdf_and_create_chunks(file_bytes: bytes) -> List[Dict]:
 
     for page_index, page in enumerate(reader.pages):
         try:
+            # Chế độ layout thường giữ thứ tự chữ và xuống dòng tốt hơn.
+            page_text = page.extract_text(extraction_mode="layout") or ""
+        except TypeError:
+            # Tương thích với bản pypdf cũ chưa hỗ trợ extraction_mode.
             page_text = page.extract_text() or ""
         except Exception:
             page_text = ""
@@ -241,11 +363,48 @@ def search_relevant_chunks(
     top_indices = np.argsort(scores)[::-1][:top_k]
 
     results = []
+    used_windows = set()
 
     for index in top_indices:
-        result = dict(chunks[index])
-        result["score"] = float(scores[index])
-        results.append(result)
+        # Lấy thêm chunk đứng trước và đứng sau để tránh hiển thị một mẩu
+        # văn bản bắt đầu hoặc kết thúc đột ngột.
+        start_index = max(0, int(index) - 1)
+        end_index = min(len(chunks), int(index) + 2)
+        window_indices = tuple(range(start_index, end_index))
+
+        if window_indices in used_windows:
+            continue
+
+        used_windows.add(window_indices)
+
+        window_chunks = [chunks[item_index] for item_index in window_indices]
+        combined_text = "\n\n".join(
+            item["text"].strip()
+            for item in window_chunks
+            if item.get("text", "").strip()
+        )
+
+        pages = []
+
+        for item in window_chunks:
+            page = item.get("page")
+
+            if page not in pages:
+                pages.append(page)
+
+        page_label = (
+            str(pages[0])
+            if len(pages) == 1
+            else f"{pages[0]}–{pages[-1]}"
+        )
+
+        results.append(
+            {
+                "text": combined_text,
+                "page": page_label,
+                "score": float(scores[index]),
+            }
+        )
 
     return results
 
@@ -378,7 +537,7 @@ with st.sidebar:
 # -----------------------------
 if uploaded_file is not None:
     file_bytes = uploaded_file.getvalue()
-    index_version = b"sentence_chunk_v2"
+    index_version = b"structured_chunk_v5"
     current_hash = hashlib.sha256(file_bytes + index_version).hexdigest()
 
     # Chỉ tạo lại chỉ mục khi người dùng tải một file mới.
@@ -434,7 +593,7 @@ for message in st.session_state.messages:
                         f"**Trang {source['page']} — "
                         f"độ tương đồng {source['score']:.3f}**"
                     )
-                    st.write(source["text"])
+                    st.markdown(format_source_text(source["text"]))
                     st.divider()
 
 
@@ -521,7 +680,9 @@ if question:
                                 f"độ tương đồng "
                                 f"{source_item['score']:.3f}**"
                             )
-                            formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
+                            formatted_text = format_source_text(
+                                source_item["text"]
+                            )
                             st.markdown(formatted_text)
                             st.divider()
 
