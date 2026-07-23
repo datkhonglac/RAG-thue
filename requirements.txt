@@ -1,7 +1,6 @@
 streamlit
-langchain
 openai
-tiktoken
 pypdf
-chromadb
+numpy
+sentence-transformers
 python-dotenv
