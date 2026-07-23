@@ -421,25 +421,25 @@ if question:
     else:
         with st.chat_message("assistant", avatar="👩‍🏫"):
             with st.spinner("Đang tìm kiếm trong tài liệu và tạo câu trả lời..."):
-                # --- ĐOẠN CODE MỚI THÊM VÀO ĐÂY ---
-            if expert_mode:
-                st.info("▶️ [Video 3s - Tone giọng nữ AI]: 'Vậy thì theo tôi...'")
-                question = question + "\n\n(YÊU CẦU ẨN: Hãy phân tích thêm tác động của chính sách thuế này dưới góc độ kinh tế vĩ mô và sự vận hành của nền sản xuất trong nền kinh tế tư bản chủ nghĩa. Trả lời sắc bén và sâu sắc)."
-            # ----------------------------------
-                try:
-                    retrieved_chunks = search_relevant_chunks(
-                        question=question,
-                        chunks=st.session_state.chunks,
-                        embeddings=st.session_state.embeddings,
-                        top_k=top_k,
-                    )
-
-                    answer = ask_openai(
-                        api_key=api_key,
-                        model_name=model_name,
-                        question=question,
-                        retrieved_chunks=retrieved_chunks,
-                    )
+                    # --- ĐOẠN CODE MỚI THÊM VÀO ĐÂY ---
+                if expert_mode:
+                    st.info("▶️ [Video 3s - Tone giọng nữ AI]: 'Vậy thì theo tôi...'")
+                    question = question + "\n\n(YÊU CẦU ẨN: Hãy phân tích thêm tác động của chính sách thuế này dưới góc độ kinh tế vĩ mô và sự vận hành của nền sản xuất trong nền kinh tế tư bản chủ nghĩa. Trả lời sắc bén và sâu sắc)."
+                # ----------------------------------
+                    try:
+                        retrieved_chunks = search_relevant_chunks(
+                            question=question,
+                            chunks=st.session_state.chunks,
+                            embeddings=st.session_state.embeddings,
+                            top_k=top_k,
+                        )
+    
+                            answer = ask_openai(
+                            api_key=api_key,
+                            model_name=model_name,
+                            question=question,
+                            retrieved_chunks=retrieved_chunks,
+                        )
 
                     st.markdown(answer)
 
