@@ -405,7 +405,7 @@ if question:
             "Hãy nhập API Key trong thanh bên rồi gửi lại câu hỏi."
         )
 
-    with st.chat_message("assistant", avatar="👩‍🏫"):
+     with st.chat_message("assistant", avatar="👩‍🏫"):
             st.error(error_message)
 
         st.session_state.messages.append(
