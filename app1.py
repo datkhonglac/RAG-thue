@@ -288,8 +288,8 @@ with st.sidebar:
     )
     
    # Tự động lấy Key từ két sắt và gán cố định tên mô hình
-api_key = st.secrets["GROQ_API_KEY"]
-model_name = "llama-3.3-70b-versatile"
+    api_key = st.secrets["GROQ_API_KEY"]
+    model_name = "llama-3.3-70b-versatile"
 
     top_k = st.slider(
         "Số đoạn tài liệu dùng làm ngữ cảnh",
