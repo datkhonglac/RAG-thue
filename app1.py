@@ -461,8 +461,9 @@ if question:
                                 f"độ tương đồng "
                                 f"{source_item['score']:.3f}**"
                             )
-                            st.write(source_item["text"])
-                            st.divider()
+                          formatted_text = source_item["text"].replace(" • ", "\n\n* ").replace("• ", "\n\n* ")
+                          st.markdown(formatted_text)
+                          st.divider()
 
                     st.session_state.messages.append(
                         {
